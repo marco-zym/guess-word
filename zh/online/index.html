@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜词游戏</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(100% - 24px);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>猜词游戏</h1>
+        <p>猜猜单词或字母！您有 10 次尝试机会。</p>
+        <div>
+            <input type="text" id="guessInput" placeholder="输入你的猜测" />
+            <button onclick="makeGuess()">猜测</button>
+            <button onclick="restartGame()">重新开始</button>
+        </div>
+        <p id="maskedWord">单词: ______</p>
+        <p id="remainingAttempts">剩余尝试次数：10</p>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        let word;
+        let maxAttempts = 10;
+        let attempts;
+        let guessedWord;
+        let words = [];
+
+        async function fetchWords() {
+            try {
+                const response = await fetch('../../word.json');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch words');
+                }
+                const data = await response.json();
+                words = data.words; // 从 "words" 关键字读取单词数组
+                startGame();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('result').textContent = '加载单词时出错。请稍后重试。';
+            }
+        }
+
+        function startGame() {
+            if (words.length === 0) {
+                document.getElementById('result').textContent = '没有单词。请检查 word.json。';
+                return;
+            }
+            word = words[Math.floor(Math.random() * words.length)].toLowerCase();
+            attempts = 0;
+            guessedWord = Array(word.length).fill('_');
+            document.getElementById('guessInput').disabled = false;
+            document.querySelector('button[onclick="makeGuess()"]').disabled = false;
+            document.getElementById('result').textContent = '';
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('maskedWord').textContent = `单词：${guessedWord.join(' ')}`;
+            document.getElementById('remainingAttempts').textContent = `剩余尝试：${maxAttempts - attempts}`;
+        }
+
+        function makeGuess() {
+            const input = document.getElementById('guessInput').value.toLowerCase();
+            document.getElementById('guessInput').value = ""; // Clear input
+
+            if (!input) {
+                alert('请输入一个猜测。');
+                return;
+            }
+
+            if (input === word) {
+                guessedWord = word.split('');
+                updateDisplay();
+                document.getElementById('result').textContent = '恭喜！你猜对了这个词！';
+                disableInput();
+                return;
+            }
+
+            if (input.length === 1) {
+                if (!/^[a-z]$/.test(input)) {
+                    alert('请输入有效的字母。');
+                    return;
+                }
+
+                if (guessedWord.includes(input)) {
+                    alert('你已经猜到那个字母了！');
+                    return;
+                }
+
+                let correctGuess = false;
+                for (let i = 0; i < word.length; i++) {
+                    if (word[i] === input) {
+                        guessedWord[i] = input;
+                        correctGuess = true;
+                    }
+                }
+
+                if (!correctGuess) {
+                    attempts++;
+                }
+
+                updateDisplay();
+
+                if (guessedWord.join('') === word) {
+                    document.getElementById('result').textContent = '恭喜！你猜对了这个词！';
+                    disableInput();
+                } else if (attempts >= maxAttempts) {
+                    document.getElementById('result').textContent = `游戏结束！这个词是 "${word}".`;
+                    disableInput();
+                }
+            } else {
+                alert('无效猜测。输入单个字母或完整单词。');
+                attempts++;
+                updateDisplay();
+
+                if (attempts >= maxAttempts) {
+                    document.getElementById('result').textContent = `游戏结束！这个词是 "${word}".`;
+                    disableInput();
+                }
+            }
+        }
+
+        function disableInput() {
+            document.getElementById('guessInput').disabled = true;
+            document.querySelector('button[onclick="makeGuess()"]').disabled = true;
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        fetchWords();
+    </script>
+</body>
+</html>
